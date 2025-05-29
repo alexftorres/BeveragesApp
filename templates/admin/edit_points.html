@@ -1,0 +1,41 @@
+
+{% extends "base.html" %}
+
+{% block title %}Editar Pontuação - Beer Price Manager{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Editar Configuração de Pontos</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label class="form-label">Ação</label>
+                        <input type="text" class="form-control" value="
+                        {% if setting.name == 'report_price' %}Reportar Preço{% elif setting.name == 'confirm_price' %}Confirmar Preço{% else %}{{ setting.name }}{% endif %}" readonly>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Descrição</label>
+                        <textarea class="form-control" rows="2" readonly>{{ setting.description }}</textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="points" class="form-label">Pontos</label>
+                        <input type="number" class="form-control" id="points" name="points" min="0" max="1000" value="{{ setting.points }}" required>
+                        <div class="form-text">Digite quantos pontos o usuário deve ganhar por esta ação.</div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('admin_points') }}" class="btn btn-secondary">Cancelar</a>
+                        <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

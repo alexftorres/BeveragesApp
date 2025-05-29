@@ -1,0 +1,64 @@
+
+{% extends "base.html" %}
+
+{% block title %}Configurações de Pontuação - Beer Price Manager{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2>Configurações de Pontuação</h2>
+        <p class="text-muted">Configure quantos pontos os usuários ganham por cada ação.</p>
+    </div>
+</div>
+
+<div class="row mt-3">
+    <div class="col-12">
+        {% if settings %}
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Ação</th>
+                        <th>Descrição</th>
+                        <th>Pontos</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for setting in settings %}
+                    <tr>
+                        <td>
+                            {% if setting.name == 'report_price' %}
+                                Reportar Preço
+                            {% elif setting.name == 'confirm_price' %}
+                                Confirmar Preço
+                            {% else %}
+                                {{ setting.name }}
+                            {% endif %}
+                        </td>
+                        <td>{{ setting.description }}</td>
+                        <td>
+                            <span class="badge bg-primary fs-6">{{ setting.points }} pontos</span>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('admin_edit_points', setting_id=setting.id) }}" class="btn btn-sm btn-outline-primary">Editar</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            Nenhuma configuração de pontos encontrada.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row mt-3">
+    <div class="col-12">
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">Voltar ao Painel</a>
+    </div>
+</div>
+{% endblock %}

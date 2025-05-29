@@ -105,6 +105,15 @@ def is_admin():
     user = User.query.get(session['user_id'])
     return user and user.role and user.role.name == 'admin'
 
+
+class PointSettings(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False)
+    description = db.Column(db.Text, nullable=False)
+    points = db.Column(db.Integer, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
 def has_permission(permission_name):
     if 'user_id' not in session:
         return False
@@ -341,12 +350,16 @@ def confirm_price(price_id):
     price.confirmed_by = session['user_id']
     price.is_confirmed = True
 
+    # Buscar configurações de pontos
+    report_points = PointSettings.query.filter_by(name='report_price').first()
+    confirm_points = PointSettings.query.filter_by(name='confirm_price').first()
+    
     # Adicionar pontos aos usuários apenas na confirmação
     reporter = User.query.get(price.reported_by)
     confirmer = User.query.get(session['user_id'])
 
-    reporter.points += 10  # Pontos por cadastrar o preço
-    confirmer.points += 5  # Pontos por confirmar
+    reporter.points += report_points.points if report_points else 10  # Pontos por cadastrar o preço
+    confirmer.points += confirm_points.points if confirm_points else 5  # Pontos por confirmar
 
     db.session.commit()
 
@@ -692,6 +705,28 @@ with app.app_context():
         brands = [
             Brand(name='Skol', created_by=1),
             Brand(name='Brahma', created_by=1),
+
+@app.route('/admin/points')
+@require_admin
+def admin_points():
+    settings = PointSettings.query.all()
+    return render_template('admin/points.html', settings=settings)
+
+@app.route('/admin/points/edit/<int:setting_id>', methods=['GET', 'POST'])
+@require_admin
+def admin_edit_points(setting_id):
+    setting = PointSettings.query.get_or_404(setting_id)
+
+    if request.method == 'POST':
+        setting.points = int(request.form['points'])
+        
+        db.session.commit()
+        flash('Configuração de pontos atualizada com sucesso!', 'success')
+        return redirect(url_for('admin_points'))
+
+    return render_template('admin/edit_points.html', setting=setting)
+
+
             Brand(name='Antarctica', created_by=1),
             Brand(name='Heineken', created_by=1),
             Brand(name='Stella Artois', created_by=1),
@@ -751,6 +786,18 @@ with app.app_context():
         for permission in all_permissions:
             role_permission = RolePermission(role_id=admin_role.id, permission_id=permission.id)
             db.session.add(role_permission)
+
+        db.session.commit()
+
+    # Adicionar configurações de pontos padrão se não existirem
+    if not PointSettings.query.first():
+        point_settings = [
+            PointSettings(name='report_price', description='Pontos por reportar um preço', points=10),
+            PointSettings(name='confirm_price', description='Pontos por confirmar um preço', points=5),
+        ]
+
+        for setting in point_settings:
+            db.session.add(setting)
 
         db.session.commit()
 
