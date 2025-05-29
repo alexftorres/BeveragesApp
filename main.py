@@ -502,8 +502,5 @@ with app.app_context():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
-```
 
-**Analysis:**
 
-The code was modified to include password change and password reset functionality. Specifically, the `User` model was updated to include `reset_token` and `reset_token_expires` fields. New routes were added for `/change_password`, `/forgot_password`, and `/reset_password`. The database initialization section was modified to add checks for `role`, `is_active`, `reset_token`, and `reset_token_expires` columns in the `user` table and adds them if they don't exist. Additionally, `timedelta` was imported for setting token expiration times. The new routes handle password changes and password reset requests using tokens.
