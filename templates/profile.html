@@ -23,7 +23,11 @@
                 
                 <div class="mb-3">
                     <label class="form-label"><strong>Telefone:</strong></label>
-                    <p>{{ user.phone }}</p>
+                    <p>{{ user.phone }} 
+                        {% if user.has_whatsapp %}
+                        <span class="badge bg-success">📱 WhatsApp</span>
+                        {% endif %}
+                    </p>
                 </div>
                 
                 <div class="mb-3">

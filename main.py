@@ -18,6 +18,7 @@ class User(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     name = db.Column(db.String(100), nullable=False)
     phone = db.Column(db.String(20), nullable=False)
+    has_whatsapp = db.Column(db.Boolean, default=False)
     password_hash = db.Column(db.String(120), nullable=False)
     points = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -102,6 +103,7 @@ def register():
             email=email,
             name=name,
             phone=phone,
+            has_whatsapp=bool(request.form.get('has_whatsapp')),
             password_hash=generate_password_hash(password)
         )
 

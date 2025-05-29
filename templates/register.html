@@ -24,7 +24,14 @@
                     
                     <div class="mb-3">
                         <label for="phone" class="form-label">Telefone</label>
-                        <input type="tel" class="form-control" id="phone" name="phone" required>
+                        <input type="tel" class="form-control" id="phone" name="phone" placeholder="(11) 99999-9999" required>
+                    </div>
+                    
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="has_whatsapp" name="has_whatsapp" value="1">
+                        <label class="form-check-label" for="has_whatsapp">
+                            📱 Este telefone também é WhatsApp
+                        </label>
                     </div>
                     
                     <div class="mb-3">
@@ -42,4 +49,22 @@
         </div>
     </div>
 </div>
+
+<script>
+document.getElementById('phone').addEventListener('input', function (e) {
+    let value = e.target.value.replace(/\D/g, '');
+    
+    if (value.length <= 11) {
+        if (value.length <= 2) {
+            value = value.replace(/(\d{0,2})/, '($1');
+        } else if (value.length <= 7) {
+            value = value.replace(/(\d{2})(\d{0,5})/, '($1) $2');
+        } else {
+            value = value.replace(/(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3');
+        }
+    }
+    
+    e.target.value = value;
+});
+</script>
 {% endblock %}
