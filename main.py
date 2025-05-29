@@ -163,12 +163,16 @@ def register():
             flash('Email já cadastrado!', 'error')
             return redirect(url_for('register'))
 
+        # Buscar perfil padrão de usuário comum
+        user_role = Role.query.filter_by(name='user').first()
+
         user = User(
             email=email,
             name=name,
             phone=phone,
             has_whatsapp=bool(request.form.get('has_whatsapp')),
-            password_hash=generate_password_hash(password)
+            password_hash=generate_password_hash(password),
+            role_id=user_role.id if user_role else None
         )
 
         db.session.add(user)
