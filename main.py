@@ -1,0 +1,284 @@
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
+from flask_sqlalchemy import SQLAlchemy
+from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime
+import os
+import secrets
+
+app = Flask(__name__)
+app.config['SECRET_KEY'] = secrets.token_hex(16)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///beer_prices.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db = SQLAlchemy(app)
+
+# Modelos do banco de dados
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    phone = db.Column(db.String(20), nullable=False)
+    password_hash = db.Column(db.String(120), nullable=False)
+    points = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class Location(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)
+    type = db.Column(db.String(50), nullable=False)  # supermercado, distribuidora, deposito
+    latitude = db.Column(db.Float, nullable=False)
+    longitude = db.Column(db.Float, nullable=False)
+    address = db.Column(db.String(300), nullable=False)
+    created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class Beer(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    brand = db.Column(db.String(100), nullable=False)
+    type = db.Column(db.String(50), nullable=False)  # lager, ipa, pilsen, etc
+    description = db.Column(db.Text, nullable=False)
+    size = db.Column(db.String(20), nullable=False)  # 350ml, 500ml, 600ml, etc
+    created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class Price(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    beer_id = db.Column(db.Integer, db.ForeignKey('beer.id'), nullable=False)
+    location_id = db.Column(db.Integer, db.ForeignKey('location.id'), nullable=False)
+    price = db.Column(db.Float, nullable=False)
+    reported_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    confirmed_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    is_confirmed = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    beer = db.relationship('Beer', backref='prices')
+    location = db.relationship('Location', backref='prices')
+    reporter = db.relationship('User', foreign_keys=[reported_by], backref='reported_prices')
+    confirmer = db.relationship('User', foreign_keys=[confirmed_by], backref='confirmed_prices')
+
+class Reward(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=False)
+    points_required = db.Column(db.Integer, nullable=False)
+    is_active = db.Column(db.Boolean, default=True)
+
+# Rotas
+@app.route('/')
+def index():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    # Buscar preços recentes
+    recent_prices = db.session.query(Price).join(Beer).join(Location).order_by(Price.created_at.desc()).limit(10).all()
+
+    # Buscar usuário atual
+    user = User.query.get(session['user_id'])
+
+    return render_template('index.html', recent_prices=recent_prices, user=user)
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        email = request.form['email']
+        name = request.form['name']
+        phone = request.form['phone']
+        password = request.form['password']
+
+        if User.query.filter_by(email=email).first():
+            flash('Email já cadastrado!', 'error')
+            return redirect(url_for('register'))
+
+        user = User(
+            email=email,
+            name=name,
+            phone=phone,
+            password_hash=generate_password_hash(password)
+        )
+
+        db.session.add(user)
+        db.session.commit()
+
+        flash('Cadastro realizado com sucesso!', 'success')
+        return redirect(url_for('login'))
+
+    return render_template('register.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        email = request.form['email']
+        password = request.form['password']
+
+        user = User.query.filter_by(email=email).first()
+
+        if user and check_password_hash(user.password_hash, password):
+            session['user_id'] = user.id
+            return redirect(url_for('index'))
+        else:
+            flash('Email ou senha incorretos!', 'error')
+
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.pop('user_id', None)
+    return redirect(url_for('login'))
+
+@app.route('/locations')
+def locations():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    locations = Location.query.all()
+    return render_template('locations.html', locations=locations)
+
+@app.route('/add_location', methods=['GET', 'POST'])
+def add_location():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    if request.method == 'POST':
+        location = Location(
+            name=request.form['name'],
+            type=request.form['type'],
+            latitude=float(request.form['latitude']),
+            longitude=float(request.form['longitude']),
+            address=request.form['address'],
+            created_by=session['user_id']
+        )
+
+        db.session.add(location)
+        db.session.commit()
+
+        flash('Local adicionado com sucesso!', 'success')
+        return redirect(url_for('locations'))
+
+    return render_template('add_location.html')
+
+@app.route('/beers')
+def beers():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    beers = Beer.query.all()
+    return render_template('beers.html', beers=beers)
+
+@app.route('/add_beer', methods=['GET', 'POST'])
+def add_beer():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    if request.method == 'POST':
+        beer = Beer(
+            brand=request.form['brand'],
+            type=request.form['type'],
+            description=request.form['description'],
+            size=request.form['size'],
+            created_by=session['user_id']
+        )
+
+        db.session.add(beer)
+        db.session.commit()
+
+        flash('Cerveja adicionada com sucesso!', 'success')
+        return redirect(url_for('beers'))
+
+    return render_template('add_beer.html')
+
+@app.route('/add_price', methods=['GET', 'POST'])
+def add_price():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    if request.method == 'POST':
+        price = Price(
+            beer_id=request.form['beer_id'],
+            location_id=request.form['location_id'],
+            price=float(request.form['price']),
+            reported_by=session['user_id']
+        )
+
+        db.session.add(price)
+
+        # Adicionar pontos ao usuário
+        user = User.query.get(session['user_id'])
+        user.points += 10
+
+        db.session.commit()
+
+        flash('Preço adicionado com sucesso! Você ganhou 10 pontos!', 'success')
+        return redirect(url_for('index'))
+
+    beers = Beer.query.all()
+    locations = Location.query.all()
+    return render_template('add_price.html', beers=beers, locations=locations)
+
+@app.route('/confirm_price/<int:price_id>')
+def confirm_price(price_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    price = Price.query.get_or_404(price_id)
+
+    if price.reported_by == session['user_id']:
+        flash('Você não pode confirmar seu próprio preço!', 'error')
+        return redirect(url_for('index'))
+
+    if price.is_confirmed:
+        flash('Este preço já foi confirmado!', 'error')
+        return redirect(url_for('index'))
+
+    price.confirmed_by = session['user_id']
+    price.is_confirmed = True
+
+    # Adicionar pontos aos usuários
+    reporter = User.query.get(price.reported_by)
+    confirmer = User.query.get(session['user_id'])
+
+    reporter.points += 5
+    confirmer.points += 5
+
+    db.session.commit()
+
+    flash('Preço confirmado! Você e o usuário que reportou ganharam 5 pontos cada!', 'success')
+    return redirect(url_for('index'))
+
+@app.route('/rewards')
+def rewards():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    user = User.query.get(session['user_id'])
+    rewards = Reward.query.filter_by(is_active=True).order_by(Reward.points_required).all()
+
+    return render_template('rewards.html', user=user, rewards=rewards)
+
+@app.route('/profile')
+def profile():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    user = User.query.get(session['user_id'])
+    return render_template('profile.html', user=user)
+
+# Inicializar banco de dados
+with app.app_context():
+    db.create_all()
+
+    # Adicionar recompensas padrão se não existirem
+    if not Reward.query.first():
+        rewards = [
+            Reward(name='Adesivo do App', description='Adesivo exclusivo do aplicativo', points_required=50),
+            Reward(name='Camiseta', description='Camiseta do aplicativo', points_required=200),
+            Reward(name='Caneca Térmica', description='Caneca térmica para cerveja', points_required=500),
+            Reward(name='Kit Degustação', description='Kit com copos para degustação', points_required=1000),
+        ]
+
+        for reward in rewards:
+            db.session.add(reward)
+
+        db.session.commit()
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)

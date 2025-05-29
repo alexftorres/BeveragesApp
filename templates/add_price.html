@@ -1,0 +1,66 @@
+
+{% extends "base.html" %}
+
+{% block title %}Adicionar Preço - Beer Price Manager{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Adicionar Preço</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="beer_id" class="form-label">Cerveja</label>
+                        <select class="form-select" id="beer_id" name="beer_id" required>
+                            <option value="">Selecione a cerveja</option>
+                            {% for beer in beers %}
+                            <option value="{{ beer.id }}">{{ beer.brand }} - {{ beer.type.replace('_', ' ').title() }} ({{ beer.size }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="location_id" class="form-label">Local</label>
+                        <select class="form-select" id="location_id" name="location_id" required>
+                            <option value="">Selecione o local</option>
+                            {% for location in locations %}
+                            <option value="{{ location.id }}">{{ location.name }} ({{ location.type.title() }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="price" class="form-label">Preço (R$)</label>
+                        <input type="number" class="form-control" id="price" name="price" step="0.01" required>
+                        <div class="form-text">Digite o preço encontrado no estabelecimento</div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <strong>Ganhe pontos!</strong> Você ganhará 10 pontos ao adicionar este preço. Quando outro usuário confirmar, vocês ganharão 5 pontos cada!
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">Adicionar Preço</button>
+                    <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancelar</a>
+                </form>
+            </div>
+        </div>
+        
+        {% if not beers %}
+        <div class="alert alert-warning mt-3">
+            <strong>Nenhuma cerveja cadastrada!</strong> 
+            <a href="{{ url_for('add_beer') }}" class="alert-link">Cadastre uma cerveja primeiro</a>.
+        </div>
+        {% endif %}
+        
+        {% if not locations %}
+        <div class="alert alert-warning mt-3">
+            <strong>Nenhum local cadastrado!</strong> 
+            <a href="{{ url_for('add_location') }}" class="alert-link">Cadastre um local primeiro</a>.
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

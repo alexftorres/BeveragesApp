@@ -1,0 +1,127 @@
+
+{% extends "base.html" %}
+
+{% block title %}Adicionar Local - Beer Price Manager{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Adicionar Novo Local</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" id="locationForm">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Nome do Local</label>
+                        <input type="text" class="form-control" id="name" name="name" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="type" class="form-label">Tipo</label>
+                        <select class="form-select" id="type" name="type" required>
+                            <option value="">Selecione o tipo</option>
+                            <option value="supermercado">Supermercado</option>
+                            <option value="distribuidora">Distribuidora</option>
+                            <option value="deposito">Depósito de Bebidas</option>
+                            <option value="conveniencia">Loja de Conveniência</option>
+                            <option value="bar">Bar/Restaurante</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="address" class="form-label">Endereço</label>
+                        <input type="text" class="form-control" id="address" name="address" required>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="latitude" class="form-label">Latitude</label>
+                                <input type="number" class="form-control" id="latitude" name="latitude" step="any" required readonly>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="longitude" class="form-label">Longitude</label>
+                                <input type="number" class="form-control" id="longitude" name="longitude" step="any" required readonly>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">Salvar Local</button>
+                    <a href="{{ url_for('locations') }}" class="btn btn-secondary">Cancelar</a>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Localização no Mapa</h5>
+            </div>
+            <div class="card-body">
+                <div id="map"></div>
+                <p class="text-muted mt-2 small">Clique no mapa para definir a localização do estabelecimento</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Inicializar mapa
+    var map = L.map('map').setView([-23.5505, -46.6333], 13); // São Paulo como padrão
+    
+    // Adicionar camada satelite
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+    }).addTo(map);
+    
+    var marker;
+    
+    // Evento de clique no mapa
+    map.on('click', function(e) {
+        var lat = e.latlng.lat;
+        var lng = e.latlng.lng;
+        
+        // Remover marcador anterior se existir
+        if (marker) {
+            map.removeLayer(marker);
+        }
+        
+        // Adicionar novo marcador
+        marker = L.marker([lat, lng]).addTo(map);
+        
+        // Atualizar campos de latitude e longitude
+        document.getElementById('latitude').value = lat;
+        document.getElementById('longitude').value = lng;
+        
+        // Buscar endereço reverso (opcional)
+        reverseGeocode(lat, lng);
+    });
+    
+    // Tentar obter localização do usuário
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+            var lat = position.coords.latitude;
+            var lng = position.coords.longitude;
+            map.setView([lat, lng], 15);
+        });
+    }
+    
+    // Função para buscar endereço reverso
+    function reverseGeocode(lat, lng) {
+        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.display_name) {
+                    document.getElementById('address').value = data.display_name;
+                }
+            })
+            .catch(error => console.log('Erro ao buscar endereço:', error));
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,87 @@
+
+{% extends "base.html" %}
+
+{% block title %}Início - Beer Price Manager{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Preços Recentes</h5>
+            </div>
+            <div class="card-body">
+                {% if recent_prices %}
+                <div class="table-responsive">
+                    <table class="table table-dark table-striped">
+                        <thead>
+                            <tr>
+                                <th>Cerveja</th>
+                                <th>Local</th>
+                                <th>Preço</th>
+                                <th>Status</th>
+                                <th>Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for price in recent_prices %}
+                            <tr>
+                                <td>
+                                    <strong>{{ price.beer.brand }}</strong><br>
+                                    <small class="text-muted">{{ price.beer.type }} - {{ price.beer.size }}</small>
+                                </td>
+                                <td>{{ price.location.name }}</td>
+                                <td>R$ {{ "%.2f"|format(price.price) }}</td>
+                                <td>
+                                    {% if price.is_confirmed %}
+                                        <span class="badge bg-success">Confirmado</span>
+                                    {% else %}
+                                        <span class="badge bg-warning">Aguardando confirmação</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if not price.is_confirmed and price.reported_by != session.user_id %}
+                                        <a href="{{ url_for('confirm_price', price_id=price.id) }}" class="btn btn-sm btn-success">Confirmar</a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted">Nenhum preço cadastrado ainda.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Ações Rápidas</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('add_price') }}" class="btn btn-primary">Adicionar Preço</a>
+                    <a href="{{ url_for('add_beer') }}" class="btn btn-outline-light">Cadastrar Cerveja</a>
+                    <a href="{{ url_for('add_location') }}" class="btn btn-outline-light">Cadastrar Local</a>
+                </div>
+            </div>
+        </div>
+        
+        {% if user %}
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="mb-0">Seus Pontos</h5>
+            </div>
+            <div class="card-body text-center">
+                <h2 class="text-warning">{{ user.points }}</h2>
+                <p class="text-muted">pontos acumulados</p>
+                <a href="{{ url_for('rewards') }}" class="btn btn-sm btn-outline-warning">Ver Recompensas</a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

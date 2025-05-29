@@ -1,0 +1,92 @@
+
+{% extends "base.html" %}
+
+{% block title %}Locais - Beer Price Manager{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Locais Cadastrados</h2>
+    <a href="{{ url_for('add_location') }}" class="btn btn-primary">Adicionar Local</a>
+</div>
+
+{% if locations %}
+<div class="row">
+    {% for location in locations %}
+    <div class="col-md-6 col-lg-4 mb-3">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">{{ location.name }}</h5>
+                <p class="card-text">
+                    <span class="badge bg-secondary">{{ location.type.title() }}</span><br>
+                    <small class="text-muted">{{ location.address }}</small>
+                </p>
+                <button class="btn btn-sm btn-outline-primary" onclick="showOnMap({{ location.latitude }}, {{ location.longitude }}, '{{ location.name }}')">
+                    Ver no Mapa
+                </button>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Modal do Mapa -->
+<div class="modal fade" id="mapModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content bg-dark">
+            <div class="modal-header">
+                <h5 class="modal-title" id="mapModalLabel">Localização</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="modalMap" style="height: 400px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% else %}
+<div class="text-center">
+    <p class="text-muted">Nenhum local cadastrado ainda.</p>
+    <a href="{{ url_for('add_location') }}" class="btn btn-primary">Cadastrar Primeiro Local</a>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    var modalMap;
+    
+    function showOnMap(lat, lng, name) {
+        // Inicializar mapa do modal se não existir
+        if (!modalMap) {
+            modalMap = L.map('modalMap');
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: 'Tiles &copy; Esri'
+            }).addTo(modalMap);
+        }
+        
+        // Limpar marcadores anteriores
+        modalMap.eachLayer(function (layer) {
+            if (layer instanceof L.Marker) {
+                modalMap.removeLayer(layer);
+            }
+        });
+        
+        // Definir vista e adicionar marcador
+        modalMap.setView([lat, lng], 16);
+        L.marker([lat, lng]).addTo(modalMap).bindPopup(name).openPopup();
+        
+        // Atualizar título do modal
+        document.getElementById('mapModalLabel').textContent = name;
+        
+        // Mostrar modal
+        var modal = new bootstrap.Modal(document.getElementById('mapModal'));
+        modal.show();
+        
+        // Redimensionar mapa quando modal abrir
+        modal._element.addEventListener('shown.bs.modal', function () {
+            modalMap.invalidateSize();
+        });
+    }
+</script>
+{% endblock %}

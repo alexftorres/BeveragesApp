@@ -1,0 +1,77 @@
+
+{% extends "base.html" %}
+
+{% block title %}Adicionar Cerveja - Beer Price Manager{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Cadastrar Nova Cerveja</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="brand" class="form-label">Marca</label>
+                                <input type="text" class="form-control" id="brand" name="brand" required>
+                                <div class="form-text">Ex: Skol, Brahma, Heineken</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="type" class="form-label">Tipo</label>
+                                <select class="form-select" id="type" name="type" required>
+                                    <option value="">Selecione o tipo</option>
+                                    <option value="pilsen">Pilsen</option>
+                                    <option value="lager">Lager</option>
+                                    <option value="ipa">IPA</option>
+                                    <option value="wheat">Wheat</option>
+                                    <option value="stout">Stout</option>
+                                    <option value="porter">Porter</option>
+                                    <option value="pale_ale">Pale Ale</option>
+                                    <option value="weiss">Weiss</option>
+                                    <option value="sem_alcool">Sem Álcool</option>
+                                    <option value="outros">Outros</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="size" class="form-label">Tamanho</label>
+                                <select class="form-select" id="size" name="size" required>
+                                    <option value="">Selecione o tamanho</option>
+                                    <option value="269ml">Long Neck 269ml</option>
+                                    <option value="350ml">Lata 350ml</option>
+                                    <option value="473ml">Lata 473ml</option>
+                                    <option value="500ml">Garrafa 500ml</option>
+                                    <option value="600ml">Garrafa 600ml</option>
+                                    <option value="1L">Garrafa 1L</option>
+                                    <option value="pack_6">Pack 6 unidades</option>
+                                    <option value="pack_12">Pack 12 unidades</option>
+                                    <option value="pack_24">Pack 24 unidades</option>
+                                    <option value="outros">Outros</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Descrição</label>
+                        <textarea class="form-control" id="description" name="description" rows="3" required></textarea>
+                        <div class="form-text">Inclua informações como teor alcoólico, características especiais, etc.</div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">Cadastrar Cerveja</button>
+                    <a href="{{ url_for('beers') }}" class="btn btn-secondary">Cancelar</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

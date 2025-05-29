@@ -1,0 +1,72 @@
+
+{% extends "base.html" %}
+
+{% block title %}Perfil - Beer Price Manager{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Informações do Perfil</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label"><strong>Nome:</strong></label>
+                    <p>{{ user.name }}</p>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label"><strong>Email:</strong></label>
+                    <p>{{ user.email }}</p>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label"><strong>Telefone:</strong></label>
+                    <p>{{ user.phone }}</p>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label"><strong>Membro desde:</strong></label>
+                    <p>{{ user.created_at.strftime('%d/%m/%Y') }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Estatísticas</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <h3 class="text-warning">{{ user.points }}</h3>
+                        <p class="text-muted">Pontos Totais</p>
+                    </div>
+                    <div class="col-6">
+                        <h3 class="text-info">{{ user.reported_prices|length }}</h3>
+                        <p class="text-muted">Preços Reportados</p>
+                    </div>
+                </div>
+                
+                <div class="row text-center mt-3">
+                    <div class="col-6">
+                        <h3 class="text-success">{{ user.confirmed_prices|length }}</h3>
+                        <p class="text-muted">Preços Confirmados</p>
+                    </div>
+                    <div class="col-6">
+                        <h3 class="text-primary">{{ (user.reported_prices|selectattr('is_confirmed')|list)|length }}</h3>
+                        <p class="text-muted">Confirmações Recebidas</p>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <a href="{{ url_for('rewards') }}" class="btn btn-warning w-100">Ver Recompensas</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
