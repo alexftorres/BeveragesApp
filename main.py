@@ -516,6 +516,18 @@ def delete_reward(reward_id):
 # Inicializar banco de dados
 with app.app_context():
     db.create_all()
+    
+    # Verificar e adicionar coluna role se não existir
+    from sqlalchemy import inspect, text
+    inspector = inspect(db.engine)
+    columns = [column['name'] for column in inspector.get_columns('user')]
+    
+    if 'role' not in columns:
+        # Adicionar coluna role se não existir
+        with db.engine.connect() as conn:
+            conn.execute(text('ALTER TABLE user ADD COLUMN role VARCHAR(20) DEFAULT "user"'))
+            conn.commit()
+        print("Coluna 'role' adicionada à tabela user")
 
     # Criar primeiro usuário admin se não existir nenhum usuário
     if not User.query.first():
