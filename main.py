@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
+from datetime import datetime, timedelta  # Import timedelta
 import os
 import secrets
 
@@ -22,6 +22,8 @@ class User(db.Model):
     password_hash = db.Column(db.String(120), nullable=False)
     points = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    reset_token = db.Column(db.String(100), nullable=True)  # Added reset_token field
+    reset_token_expires = db.Column(db.DateTime, nullable=True)  # Added reset_token_expires field
 
 class Location(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -48,7 +50,7 @@ class Beer(db.Model):
     size = db.Column(db.String(20), nullable=False)  # 350ml, 500ml, 600ml, etc
     created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     brand = db.relationship('Brand', backref='beers')
 
 class Price(db.Model):
@@ -182,7 +184,7 @@ def add_brand():
 
     if request.method == 'POST':
         name = request.form['name']
-        
+
         if Brand.query.filter_by(name=name).first():
             flash('Esta marca já está cadastrada!', 'error')
             return redirect(url_for('add_brand'))
@@ -301,7 +303,7 @@ def edit_price(price_id):
         return redirect(url_for('login'))
 
     price = Price.query.get_or_404(price_id)
-    
+
     # Verificar se o usuário é o dono do preço
     if price.reported_by != session['user_id']:
         flash('Você só pode editar preços que você mesmo cadastrou!', 'error')
@@ -328,7 +330,7 @@ def delete_price(price_id):
         return redirect(url_for('login'))
 
     price = Price.query.get_or_404(price_id)
-    
+
     # Verificar se o usuário é o dono do preço
     if price.reported_by != session['user_id']:
         flash('Você só pode apagar preços que você mesmo cadastrou!', 'error')
@@ -341,7 +343,7 @@ def delete_price(price_id):
 
     db.session.delete(price)
     db.session.commit()
-    
+
     flash('Preço removido com sucesso!', 'success')
     return redirect(url_for('index'))
 
@@ -353,9 +355,116 @@ def profile():
     user = User.query.get(session['user_id'])
     return render_template('profile.html', user=user)
 
+@app.route('/change_password', methods=['GET', 'POST'])
+def change_password():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    user = User.query.get(session['user_id'])
+
+    if request.method == 'POST':
+        old_password = request.form['old_password']
+        new_password = request.form['new_password']
+        confirm_password = request.form['confirm_password']
+
+        if not check_password_hash(user.password_hash, old_password):
+            flash('Senha antiga incorreta!', 'error')
+            return redirect(url_for('change_password'))
+
+        if new_password != confirm_password:
+            flash('Nova senha e confirmação não coincidem!', 'error')
+            return redirect(url_for('change_password'))
+
+        user.password_hash = generate_password_hash(new_password)
+        db.session.commit()
+
+        flash('Senha alterada com sucesso!', 'success')
+        return redirect(url_for('profile'))
+
+    return render_template('change_password.html')
+
+@app.route('/forgot_password', methods=['GET', 'POST'])
+def forgot_password():
+    if request.method == 'POST':
+        email = request.form['email']
+        user = User.query.filter_by(email=email).first()
+
+        if user:
+            token = secrets.token_urlsafe(50)
+            user.reset_token = token
+            user.reset_token_expires = datetime.utcnow() + timedelta(hours=1)  # Token válido por 1 hora
+            db.session.commit()
+
+            # TODO: Enviar email com link para resetar a senha
+            print(f"Link de recuperação de senha: {url_for('reset_password', token=token, _external=True)}")
+            flash('Um link de recuperação de senha foi enviado para o seu email.', 'success')
+        else:
+            flash('Email não encontrado!', 'error')
+
+    return render_template('forgot_password.html')
+
+@app.route('/reset_password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    user = User.query.filter_by(reset_token=token).first()
+
+    if not user or user.reset_token_expires < datetime.utcnow():
+        flash('Token inválido ou expirado!', 'error')
+        return redirect(url_for('forgot_password'))
+
+    if request.method == 'POST':
+        new_password = request.form['new_password']
+        confirm_password = request.form['confirm_password']
+
+        if new_password != confirm_password:
+            flash('Nova senha e confirmação não coincidem!', 'error')
+            return render_template('reset_password.html', token=token)
+
+        user.password_hash = generate_password_hash(new_password)
+        user.reset_token = None
+        user.reset_token_expires = None
+        db.session.commit()
+
+        flash('Senha resetada com sucesso! Faça login com a nova senha.', 'success')
+        return redirect(url_for('login'))
+
+    return render_template('reset_password.html', token=token)
+
 # Inicializar banco de dados
 with app.app_context():
     db.create_all()
+
+    # Verificar e adicionar colunas se não existirem
+    from sqlalchemy import inspect, text
+    inspector = inspect(db.engine)
+    columns = [column['name'] for column in inspector.get_columns('user')]
+
+    if 'role' not in columns:
+        # Adicionar coluna role se não existir
+        with db.engine.connect() as conn:
+            conn.execute(text('ALTER TABLE user ADD COLUMN role VARCHAR(20) DEFAULT "user"'))
+            conn.commit()
+        print("Coluna 'role' adicionada à tabela user")
+
+    if 'is_active' not in columns:
+        # Adicionar coluna is_active se não existir
+        with db.engine.connect() as conn:
+            conn.execute(text('ALTER TABLE user ADD COLUMN is_active BOOLEAN DEFAULT 1'))
+            conn.commit()
+        print("Coluna 'is_active' adicionada à tabela user")
+
+    if 'reset_token' not in columns:
+        # Adicionar coluna reset_token se não existir
+        with db.engine.connect() as conn:
+            conn.execute(text('ALTER TABLE user ADD COLUMN reset_token VARCHAR(100)'))
+            conn.commit()
+        print("Coluna 'reset_token' adicionada à tabela user")
+
+    if 'reset_token_expires' not in columns:
+        # Adicionar coluna reset_token_expires se não existir
+        with db.engine.connect() as conn:
+            conn.execute(text('ALTER TABLE user ADD COLUMN reset_token_expires DATETIME'))
+            conn.commit()
+        print("Coluna 'reset_token_expires' adicionada à tabela user")
 
     # Adicionar marcas padrão se não existirem
     if not Brand.query.first():
@@ -393,3 +502,8 @@ with app.app_context():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
+```
+
+**Analysis:**
+
+The code was modified to include password change and password reset functionality. Specifically, the `User` model was updated to include `reset_token` and `reset_token_expires` fields. New routes were added for `/change_password`, `/forgot_password`, and `/reset_password`. The database initialization section was modified to add checks for `role`, `is_active`, `reset_token`, and `reset_token_expires` columns in the `user` table and adds them if they don't exist. Additionally, `timedelta` was imported for setting token expiration times. The new routes handle password changes and password reset requests using tokens.
