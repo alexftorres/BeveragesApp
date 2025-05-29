@@ -71,34 +71,56 @@
 document.addEventListener('DOMContentLoaded', function() {
     const priceInput = document.getElementById('price');
     
-    // Formatar entrada de preço
+    // Permitir apenas números, vírgula e ponto
+    priceInput.addEventListener('keypress', function(e) {
+        const key = e.key;
+        const value = e.target.value;
+        
+        // Permitir teclas de controle
+        if (['Backspace', 'Delete', 'Tab', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(key)) {
+            return;
+        }
+        
+        // Permitir apenas números
+        if (!/[0-9]/.test(key)) {
+            // Permitir vírgula ou ponto apenas se não houver nenhum ainda
+            if ((key === ',' || key === '.') && !value.includes('.') && !value.includes(',')) {
+                return;
+            }
+            e.preventDefault();
+        }
+    });
+    
+    // Formatar entrada em tempo real
     priceInput.addEventListener('input', function(e) {
         let value = e.target.value;
+        let cursorPosition = e.target.selectionStart;
         
-        // Remove tudo exceto números, vírgula e ponto
-        value = value.replace(/[^\d.,]/g, '');
+        // Substitui vírgula por ponto
+        value = value.replace(',', '.');
         
-        // Substitui vírgula por ponto para o padrão americano
-        value = value.replace(/,/g, '.');
+        // Remove caracteres inválidos
+        value = value.replace(/[^\d.]/g, '');
         
-        // Remove pontos extras (mantém apenas o primeiro)
+        // Garante apenas um ponto decimal
         const parts = value.split('.');
         if (parts.length > 2) {
             value = parts[0] + '.' + parts.slice(1).join('');
         }
         
         // Limita a 2 casas decimais
-        if (value.includes('.')) {
-            const decimalParts = value.split('.');
-            if (decimalParts[1] && decimalParts[1].length > 2) {
-                value = decimalParts[0] + '.' + decimalParts[1].substring(0, 2);
-            }
+        if (parts.length === 2 && parts[1].length > 2) {
+            value = parts[0] + '.' + parts[1].substring(0, 2);
         }
         
+        // Atualiza o valor
         e.target.value = value;
+        
+        // Restaura a posição do cursor
+        e.target.setSelectionRange(cursorPosition, cursorPosition);
     });
     
-    // Validar e formatar quando sair do campo
+    // Formatar quando sair do campo
     priceInput.addEventListener('blur', function(e) {
         let value = parseFloat(e.target.value);
         
@@ -109,17 +131,6 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Formatar com 2 casas decimais
         e.target.value = value.toFixed(2);
-    });
-    
-    // Permitir apenas números, vírgula, ponto e teclas de controle
-    priceInput.addEventListener('keypress', function(e) {
-        const char = String.fromCharCode(e.which);
-        const allowedChars = /[\d.,]/;
-        const controlKeys = [8, 9, 13, 27, 46]; // Backspace, Tab, Enter, Esc, Delete
-        
-        if (!allowedChars.test(char) && controlKeys.indexOf(e.keyCode) === -1) {
-            e.preventDefault();
-        }
     });
 });
 </script>
