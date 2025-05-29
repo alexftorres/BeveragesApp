@@ -31,8 +31,13 @@
                     
                     <div class="mb-3">
                         <label for="address" class="form-label">Endereço</label>
-                        <input type="text" class="form-control" id="address" name="address" required>
-                        <div class="form-text">Digite o endereço e o mapa será atualizado automaticamente</div>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="address" name="address" required>
+                            <button type="button" class="btn btn-outline-secondary" onclick="geocodeAddress()">
+                                <i class="fas fa-map-marker-alt"></i> Atualizar Mapa
+                            </button>
+                        </div>
+                        <div class="form-text">Digite o endereço e clique em "Atualizar Mapa" para localizar no mapa</div>
                     </div>
                     
                     <div class="row">
@@ -113,28 +118,22 @@
         });
     }
     
-    // Variável para armazenar o timeout da pesquisa
-    var searchTimeout;
-    
-    // Adicionar evento de input no campo endereço para geocodificação em tempo real
-    document.getElementById('address').addEventListener('input', function(e) {
-        var address = e.target.value.trim();
-        
-        // Limpar timeout anterior
-        if (searchTimeout) {
-            clearTimeout(searchTimeout);
-        }
-        
-        // Se o endereço tem pelo menos 5 caracteres, fazer a busca
-        if (address.length >= 5) {
-            searchTimeout = setTimeout(function() {
-                geocodeAddress(address);
-            }, 1000); // Aguardar 1 segundo após parar de digitar
-        }
-    });
-    
     // Função para geocodificar endereço
-    function geocodeAddress(address) {
+    function geocodeAddress() {
+        var address = document.getElementById('address').value.trim();
+        
+        // Verificar se o endereço foi preenchido
+        if (address.length < 5) {
+            alert('Por favor, digite um endereço com pelo menos 5 caracteres.');
+            return;
+        }
+        
+        // Mostrar indicador de carregamento
+        var button = event.target;
+        var originalText = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Buscando...';
+        button.disabled = true;
+        
         // Usar a API Nominatim do OpenStreetMap para geocodificação
         var encodedAddress = encodeURIComponent(address);
         var url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodedAddress}&countrycodes=br&limit=1&addressdetails=1`;
@@ -166,10 +165,31 @@
                     if (result.display_name) {
                         document.getElementById('address').value = result.display_name;
                     }
+                    
+                    // Mostrar mensagem de sucesso
+                    var alertDiv = document.createElement('div');
+                    alertDiv.className = 'alert alert-success alert-dismissible fade show mt-2';
+                    alertDiv.innerHTML = '<strong>Sucesso!</strong> Localização encontrada e mapa atualizado. <button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+                    button.parentNode.parentNode.appendChild(alertDiv);
+                    
+                    // Remover alerta após 3 segundos
+                    setTimeout(function() {
+                        if (alertDiv.parentNode) {
+                            alertDiv.remove();
+                        }
+                    }, 3000);
+                } else {
+                    alert('Endereço não encontrado. Verifique se o endereço está correto e tente novamente.');
                 }
             })
             .catch(error => {
                 console.log('Erro ao buscar coordenadas do endereço:', error);
+                alert('Erro ao buscar o endereço. Verifique sua conexão e tente novamente.');
+            })
+            .finally(function() {
+                // Restaurar botão
+                button.innerHTML = originalText;
+                button.disabled = false;
             });
     }
     
