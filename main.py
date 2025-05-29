@@ -4,7 +4,6 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 import os
 import secrets
-from functools import wraps
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = secrets.token_hex(16)
@@ -12,40 +11,6 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///beer_prices.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
-
-# Função auxiliar para templates
-@app.context_processor
-def inject_user():
-    def get_current_user():
-        if 'user_id' in session:
-            return User.query.get(session['user_id'])
-        return None
-    return dict(get_current_user=get_current_user)
-
-# Funções auxiliares para permissões
-def admin_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'user_id' not in session:
-            return redirect(url_for('login'))
-        user = User.query.get(session['user_id'])
-        if not user or user.role != 'admin':
-            flash('Acesso negado! Apenas administradores podem acessar esta página.', 'error')
-            return redirect(url_for('index'))
-        return f(*args, **kwargs)
-    return decorated_function
-
-def admin_or_collaborator_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'user_id' not in session:
-            return redirect(url_for('login'))
-        user = User.query.get(session['user_id'])
-        if not user or user.role not in ['admin', 'collaborator']:
-            flash('Acesso negado! Apenas administradores e colaboradores podem acessar esta página.', 'error')
-            return redirect(url_for('index'))
-        return f(*args, **kwargs)
-    return decorated_function
 
 # Modelos do banco de dados
 class User(db.Model):
@@ -56,8 +21,6 @@ class User(db.Model):
     has_whatsapp = db.Column(db.Boolean, default=False)
     password_hash = db.Column(db.String(120), nullable=False)
     points = db.Column(db.Integer, default=0)
-    role = db.Column(db.String(20), default='user')  # user, collaborator, admin
-    is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Location(db.Model):
@@ -109,10 +72,6 @@ class Reward(db.Model):
     description = db.Column(db.Text, nullable=False)
     points_required = db.Column(db.Integer, nullable=False)
     is_active = db.Column(db.Boolean, default=True)
-    created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-    creator = db.relationship('User', backref='created_rewards')
 
 # Rotas
 @app.route('/')
@@ -135,23 +94,17 @@ def register():
         name = request.form['name']
         phone = request.form['phone']
         password = request.form['password']
-        is_admin = request.form.get('is_admin') == '1'
 
         if User.query.filter_by(email=email).first():
             flash('Email já cadastrado!', 'error')
             return redirect(url_for('register'))
-
-        # Verificar se é o primeiro usuário (será admin automaticamente)
-        user_count = User.query.count()
-        role = 'admin' if (user_count == 0 or is_admin) else 'user'
 
         user = User(
             email=email,
             name=name,
             phone=phone,
             has_whatsapp=bool(request.form.get('has_whatsapp')),
-            password_hash=generate_password_hash(password),
-            role=role
+            password_hash=generate_password_hash(password)
         )
 
         db.session.add(user)
@@ -160,9 +113,7 @@ def register():
         flash('Cadastro realizado com sucesso!', 'success')
         return redirect(url_for('login'))
 
-    # Verificar se existe algum usuário (para mostrar opção de admin)
-    has_users = User.query.count() > 0
-    return render_template('register.html', has_users=has_users)
+    return render_template('register.html')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -402,146 +353,9 @@ def profile():
     user = User.query.get(session['user_id'])
     return render_template('profile.html', user=user)
 
-@app.route('/admin')
-@admin_required
-def admin_panel():
-    users = User.query.all()
-    return render_template('admin_panel.html', users=users)
-
-@app.route('/admin/users')
-@admin_required
-def manage_users():
-    users = User.query.all()
-    return render_template('manage_users.html', users=users)
-
-@app.route('/admin/update_user_role/<int:user_id>', methods=['POST'])
-@admin_required
-def update_user_role(user_id):
-    user = User.query.get_or_404(user_id)
-    new_role = request.form['role']
-    
-    if new_role in ['user', 'collaborator', 'admin']:
-        user.role = new_role
-        db.session.commit()
-        flash(f'Permissão do usuário {user.name} atualizada para {new_role}!', 'success')
-    else:
-        flash('Permissão inválida!', 'error')
-    
-    return redirect(url_for('manage_users'))
-
-@app.route('/admin/toggle_user_status/<int:user_id>')
-@admin_required
-def toggle_user_status(user_id):
-    user = User.query.get_or_404(user_id)
-    user.is_active = not user.is_active
-    db.session.commit()
-    
-    status = 'ativado' if user.is_active else 'desativado'
-    flash(f'Usuário {user.name} foi {status}!', 'success')
-    return redirect(url_for('manage_users'))
-
-@app.route('/admin/update_user_points/<int:user_id>', methods=['POST'])
-@admin_or_collaborator_required
-def update_user_points(user_id):
-    user = User.query.get_or_404(user_id)
-    action = request.form['action']
-    points = int(request.form['points'])
-    
-    if action == 'add':
-        user.points += points
-        flash(f'{points} pontos adicionados ao usuário {user.name}!', 'success')
-    elif action == 'remove':
-        user.points = max(0, user.points - points)
-        flash(f'{points} pontos removidos do usuário {user.name}!', 'success')
-    elif action == 'set':
-        user.points = points
-        flash(f'Pontos do usuário {user.name} definidos para {points}!', 'success')
-    
-    db.session.commit()
-    return redirect(url_for('manage_users'))
-
-@app.route('/admin/rewards')
-@admin_or_collaborator_required
-def manage_rewards():
-    rewards = Reward.query.all()
-    return render_template('manage_rewards.html', rewards=rewards)
-
-@app.route('/admin/add_reward', methods=['GET', 'POST'])
-@admin_or_collaborator_required
-def add_reward():
-    if request.method == 'POST':
-        reward = Reward(
-            name=request.form['name'],
-            description=request.form['description'],
-            points_required=int(request.form['points_required']),
-            created_by=session['user_id']
-        )
-        
-        db.session.add(reward)
-        db.session.commit()
-        
-        flash('Recompensa adicionada com sucesso!', 'success')
-        return redirect(url_for('manage_rewards'))
-    
-    return render_template('add_reward.html')
-
-@app.route('/admin/edit_reward/<int:reward_id>', methods=['GET', 'POST'])
-@admin_or_collaborator_required
-def edit_reward(reward_id):
-    reward = Reward.query.get_or_404(reward_id)
-    
-    if request.method == 'POST':
-        reward.name = request.form['name']
-        reward.description = request.form['description']
-        reward.points_required = int(request.form['points_required'])
-        reward.is_active = bool(request.form.get('is_active'))
-        
-        db.session.commit()
-        
-        flash('Recompensa atualizada com sucesso!', 'success')
-        return redirect(url_for('manage_rewards'))
-    
-    return render_template('edit_reward.html', reward=reward)
-
-@app.route('/admin/delete_reward/<int:reward_id>')
-@admin_or_collaborator_required
-def delete_reward(reward_id):
-    reward = Reward.query.get_or_404(reward_id)
-    db.session.delete(reward)
-    db.session.commit()
-    
-    flash('Recompensa removida com sucesso!', 'success')
-    return redirect(url_for('manage_rewards'))
-
 # Inicializar banco de dados
 with app.app_context():
     db.create_all()
-    
-    # Verificar e adicionar coluna role se não existir
-    from sqlalchemy import inspect, text
-    inspector = inspect(db.engine)
-    columns = [column['name'] for column in inspector.get_columns('user')]
-    
-    if 'role' not in columns:
-        # Adicionar coluna role se não existir
-        with db.engine.connect() as conn:
-            conn.execute(text('ALTER TABLE user ADD COLUMN role VARCHAR(20) DEFAULT "user"'))
-            conn.commit()
-        print("Coluna 'role' adicionada à tabela user")
-
-    # Criar primeiro usuário admin se não existir nenhum usuário
-    if not User.query.first():
-        admin_user = User(
-            email='admin@beerapp.com',
-            name='Administrador',
-            phone='(11) 99999-9999',
-            has_whatsapp=True,
-            password_hash=generate_password_hash('admin123'),
-            role='admin',
-            points=0
-        )
-        db.session.add(admin_user)
-        db.session.commit()
 
     # Adicionar marcas padrão se não existirem
     if not Brand.query.first():
@@ -565,14 +379,11 @@ with app.app_context():
 
     # Adicionar recompensas padrão se não existirem
     if not Reward.query.first():
-        admin_user = User.query.filter_by(role='admin').first()
-        admin_id = admin_user.id if admin_user else None
-        
         rewards = [
-            Reward(name='Adesivo do App', description='Adesivo exclusivo do aplicativo', points_required=50, created_by=admin_id),
-            Reward(name='Camiseta', description='Camiseta do aplicativo', points_required=200, created_by=admin_id),
-            Reward(name='Caneca Térmica', description='Caneca térmica para cerveja', points_required=500, created_by=admin_id),
-            Reward(name='Kit Degustação', description='Kit com copos para degustação', points_required=1000, created_by=admin_id),
+            Reward(name='Adesivo do App', description='Adesivo exclusivo do aplicativo', points_required=50),
+            Reward(name='Camiseta', description='Camiseta do aplicativo', points_required=200),
+            Reward(name='Caneca Térmica', description='Caneca térmica para cerveja', points_required=500),
+            Reward(name='Kit Degustação', description='Kit com copos para degustação', points_required=1000),
         ]
 
         for reward in rewards:
