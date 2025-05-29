@@ -1,0 +1,50 @@
+
+{% extends "base.html" %}
+
+{% block title %}Locais - BeerPrice{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <h1><i class="fas fa-map-marker-alt"></i> Locais</h1>
+        <a href="{{ url_for('cadastrar_local') }}" class="btn">
+            <i class="fas fa-plus"></i> Cadastrar Local
+        </a>
+    </div>
+    
+    <div style="margin-bottom: 2rem;">
+        <input type="text" id="search-input" class="form-control" placeholder="Buscar locais..." style="max-width: 400px;">
+    </div>
+    
+    <div class="grid grid-3" id="locais-grid">
+        {% for local in locais %}
+        <div class="price-item local-item" data-nome="{{ local.nome.lower() }}" data-endereco="{{ local.endereco.lower() }}">
+            <h3>{{ local.nome }}</h3>
+            <p><i class="fas fa-building"></i> {{ local.tipo.title() }}</p>
+            <p><i class="fas fa-map-marker-alt"></i> {{ local.endereco }}</p>
+            <p style="color: #999; font-size: 0.9rem;">
+                Cadastrado em {{ local.data_cadastro.strftime('%d/%m/%Y') }}
+            </p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+document.getElementById('search-input').addEventListener('input', function(e) {
+    const searchTerm = e.target.value.toLowerCase();
+    const locais = document.querySelectorAll('.local-item');
+    
+    locais.forEach(local => {
+        const nome = local.dataset.nome;
+        const endereco = local.dataset.endereco;
+        
+        if (nome.includes(searchTerm) || endereco.includes(searchTerm)) {
+            local.style.display = 'block';
+        } else {
+            local.style.display = 'none';
+        }
+    });
+});
+</script>
+{% endblock %}

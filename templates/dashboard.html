@@ -1,0 +1,64 @@
+
+{% extends "base.html" %}
+
+{% block title %}Dashboard - BeerPrice{% endblock %}
+
+{% block content %}
+<div class="grid grid-2">
+    <div class="card">
+        <h2><i class="fas fa-user"></i> Meu Perfil</h2>
+        <p><strong>Nome:</strong> {{ current_user.nome }}</p>
+        <p><strong>Email:</strong> {{ current_user.email }}</p>
+        <p><strong>Telefone:</strong> {{ current_user.telefone }}</p>
+        <p><strong>Pontos:</strong> <span class="price-value">{{ current_user.pontos }}</span></p>
+        <p><strong>Membro desde:</strong> {{ current_user.data_cadastro.strftime('%d/%m/%Y') }}</p>
+    </div>
+    
+    <div class="card">
+        <h2><i class="fas fa-plus"></i> Ações Rápidas</h2>
+        <div style="display: flex; flex-direction: column; gap: 1rem;">
+            <a href="{{ url_for('reportar_preco') }}" class="btn">
+                <i class="fas fa-plus-circle"></i> Reportar Preço
+            </a>
+            <a href="{{ url_for('locais') }}" class="btn btn-secondary">
+                <i class="fas fa-map-marker-alt"></i> Ver Locais
+            </a>
+            <a href="{{ url_for('cadastrar_local') }}" class="btn btn-secondary">
+                <i class="fas fa-building"></i> Cadastrar Local
+            </a>
+            <a href="{{ url_for('pontos') }}" class="btn btn-secondary">
+                <i class="fas fa-gift"></i> Ver Brindes
+            </a>
+        </div>
+    </div>
+</div>
+
+{% if meus_precos %}
+<div class="card">
+    <h2><i class="fas fa-history"></i> Meus Últimos Preços</h2>
+    <div class="grid grid-2">
+        {% for preco in meus_precos %}
+        <div class="price-item">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <strong>{{ preco.cerveja.marca }} {{ preco.cerveja.nome }}</strong><br>
+                    <small>{{ preco.local.nome }}</small><br>
+                    <small style="color: #999;">{{ preco.data_reportado.strftime('%d/%m/%Y %H:%M') }}</small>
+                </div>
+                <div class="price-value">
+                    R$ {{ "%.2f"|format(preco.preco) }}
+                </div>
+            </div>
+            <div style="margin-top: 0.5rem;">
+                {% if preco.confirmado %}
+                    <span style="color: #4CAF50;"><i class="fas fa-check-circle"></i> Confirmado</span>
+                {% else %}
+                    <span style="color: #ffc107;"><i class="fas fa-clock"></i> Aguardando confirmação ({{ preco.numero_confirmacoes }}/3)</span>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}
