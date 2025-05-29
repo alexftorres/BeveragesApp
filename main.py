@@ -21,9 +21,13 @@ class User(db.Model):
     has_whatsapp = db.Column(db.Boolean, default=False)
     password_hash = db.Column(db.String(120), nullable=False)
     points = db.Column(db.Integer, default=0)
+    role_id = db.Column(db.Integer, db.ForeignKey('role.id'), nullable=True)
+    is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    reset_token = db.Column(db.String(100), nullable=True)  # Added reset_token field
-    reset_token_expires = db.Column(db.DateTime, nullable=True)  # Added reset_token_expires field
+    reset_token = db.Column(db.String(100), nullable=True)
+    reset_token_expires = db.Column(db.DateTime, nullable=True)
+
+    role = db.relationship('Role', backref='users')
 
 class Location(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -68,12 +72,70 @@ class Price(db.Model):
     reporter = db.relationship('User', foreign_keys=[reported_by], backref='reported_prices')
     confirmer = db.relationship('User', foreign_keys=[confirmed_by], backref='confirmed_prices')
 
+class Role(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False)
+    description = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class Permission(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False)
+    description = db.Column(db.Text, nullable=False)
+
+class RolePermission(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    role_id = db.Column(db.Integer, db.ForeignKey('role.id'), nullable=False)
+    permission_id = db.Column(db.Integer, db.ForeignKey('permission.id'), nullable=False)
+
+    role = db.relationship('Role', backref='role_permissions')
+    permission = db.relationship('Permission', backref='permission_roles')
+
 class Reward(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text, nullable=False)
     points_required = db.Column(db.Integer, nullable=False)
     is_active = db.Column(db.Boolean, default=True)
+
+# Helper functions
+def is_admin():
+    if 'user_id' not in session:
+        return False
+    user = User.query.get(session['user_id'])
+    return user and user.role and user.role.name == 'admin'
+
+def has_permission(permission_name):
+    if 'user_id' not in session:
+        return False
+    user = User.query.get(session['user_id'])
+    if not user or not user.role:
+        return False
+    
+    for role_permission in user.role.role_permissions:
+        if role_permission.permission.name == permission_name:
+            return True
+    return False
+
+def require_admin(f):
+    def decorated_function(*args, **kwargs):
+        if not is_admin():
+            flash('Acesso negado! Apenas administradores podem acessar esta página.', 'error')
+            return redirect(url_for('index'))
+        return f(*args, **kwargs)
+    decorated_function.__name__ = f.__name__
+    return decorated_function
+
+def require_permission(permission_name):
+    def decorator(f):
+        def decorated_function(*args, **kwargs):
+            if not has_permission(permission_name):
+                flash(f'Acesso negado! Você não tem permissão para: {permission_name}', 'error')
+                return redirect(url_for('index'))
+            return f(*args, **kwargs)
+        decorated_function.__name__ = f.__name__
+        return decorated_function
+    return decorator
 
 # Rotas
 @app.route('/')
@@ -429,6 +491,103 @@ def reset_password(token):
 
     return render_template('reset_password.html', token=token)
 
+# Admin routes
+@app.route('/admin')
+@require_admin
+def admin_dashboard():
+    users_count = User.query.count()
+    roles_count = Role.query.count()
+    permissions_count = Permission.query.count()
+    active_users = User.query.filter_by(is_active=True).count()
+    
+    return render_template('admin/dashboard.html', 
+                         users_count=users_count, 
+                         roles_count=roles_count,
+                         permissions_count=permissions_count,
+                         active_users=active_users)
+
+@app.route('/admin/roles')
+@require_admin
+def admin_roles():
+    roles = Role.query.all()
+    return render_template('admin/roles.html', roles=roles)
+
+@app.route('/admin/roles/add', methods=['GET', 'POST'])
+@require_admin
+def admin_add_role():
+    if request.method == 'POST':
+        name = request.form['name']
+        description = request.form['description']
+        permission_ids = request.form.getlist('permissions')
+
+        if Role.query.filter_by(name=name).first():
+            flash('Este nome de perfil já existe!', 'error')
+            return redirect(url_for('admin_add_role'))
+
+        role = Role(name=name, description=description)
+        db.session.add(role)
+        db.session.flush()  # Para obter o ID do role
+
+        # Adicionar permissões
+        for permission_id in permission_ids:
+            role_permission = RolePermission(role_id=role.id, permission_id=int(permission_id))
+            db.session.add(role_permission)
+
+        db.session.commit()
+        flash('Perfil criado com sucesso!', 'success')
+        return redirect(url_for('admin_roles'))
+
+    permissions = Permission.query.all()
+    return render_template('admin/add_role.html', permissions=permissions)
+
+@app.route('/admin/roles/edit/<int:role_id>', methods=['GET', 'POST'])
+@require_admin
+def admin_edit_role(role_id):
+    role = Role.query.get_or_404(role_id)
+
+    if request.method == 'POST':
+        role.name = request.form['name']
+        role.description = request.form['description']
+        permission_ids = request.form.getlist('permissions')
+
+        # Remover permissões existentes
+        RolePermission.query.filter_by(role_id=role.id).delete()
+
+        # Adicionar novas permissões
+        for permission_id in permission_ids:
+            role_permission = RolePermission(role_id=role.id, permission_id=int(permission_id))
+            db.session.add(role_permission)
+
+        db.session.commit()
+        flash('Perfil atualizado com sucesso!', 'success')
+        return redirect(url_for('admin_roles'))
+
+    permissions = Permission.query.all()
+    role_permission_ids = [rp.permission_id for rp in role.role_permissions]
+    return render_template('admin/edit_role.html', role=role, permissions=permissions, role_permission_ids=role_permission_ids)
+
+@app.route('/admin/users')
+@require_admin
+def admin_users():
+    users = User.query.all()
+    return render_template('admin/users.html', users=users)
+
+@app.route('/admin/users/edit/<int:user_id>', methods=['GET', 'POST'])
+@require_admin
+def admin_edit_user(user_id):
+    user = User.query.get_or_404(user_id)
+
+    if request.method == 'POST':
+        user.role_id = request.form['role_id'] if request.form['role_id'] else None
+        user.is_active = bool(request.form.get('is_active'))
+        
+        db.session.commit()
+        flash('Usuário atualizado com sucesso!', 'success')
+        return redirect(url_for('admin_users'))
+
+    roles = Role.query.all()
+    return render_template('admin/edit_user.html', user=user, roles=roles)
+
 # Inicializar banco de dados
 with app.app_context():
     db.create_all()
@@ -486,6 +645,53 @@ with app.app_context():
 
         db.session.commit()
 
+    # Adicionar permissões padrão se não existirem
+    if not Permission.query.first():
+        permissions = [
+            Permission(name='add_location', description='Adicionar locais'),
+            Permission(name='add_brand', description='Adicionar marcas'),
+            Permission(name='add_beer', description='Adicionar cervejas'),
+            Permission(name='add_price', description='Adicionar preços'),
+            Permission(name='confirm_price', description='Confirmar preços'),
+            Permission(name='edit_own_price', description='Editar próprios preços'),
+            Permission(name='delete_own_price', description='Deletar próprios preços'),
+            Permission(name='view_rewards', description='Ver recompensas'),
+            Permission(name='admin_access', description='Acesso administrativo'),
+        ]
+
+        for permission in permissions:
+            db.session.add(permission)
+
+        db.session.commit()
+
+    # Adicionar perfis padrão se não existirem
+    if not Role.query.first():
+        # Criar perfil de usuário comum
+        user_role = Role(name='user', description='Usuário comum com permissões básicas')
+        db.session.add(user_role)
+        db.session.flush()
+
+        # Criar perfil de administrador
+        admin_role = Role(name='admin', description='Administrador com acesso total')
+        db.session.add(admin_role)
+        db.session.flush()
+
+        # Permissões para usuário comum
+        user_permissions = ['add_location', 'add_brand', 'add_beer', 'add_price', 'confirm_price', 'edit_own_price', 'delete_own_price', 'view_rewards']
+        for perm_name in user_permissions:
+            permission = Permission.query.filter_by(name=perm_name).first()
+            if permission:
+                role_permission = RolePermission(role_id=user_role.id, permission_id=permission.id)
+                db.session.add(role_permission)
+
+        # Permissões para admin (todas)
+        all_permissions = Permission.query.all()
+        for permission in all_permissions:
+            role_permission = RolePermission(role_id=admin_role.id, permission_id=permission.id)
+            db.session.add(role_permission)
+
+        db.session.commit()
+
     # Adicionar recompensas padrão se não existirem
     if not Reward.query.first():
         rewards = [
@@ -499,6 +705,21 @@ with app.app_context():
             db.session.add(reward)
 
         db.session.commit()
+
+    # Criar usuário admin padrão se não existir
+    admin_user = User.query.filter_by(email='admin@admin.com').first()
+    if not admin_user:
+        admin_role = Role.query.filter_by(name='admin').first()
+        admin_user = User(
+            email='admin@admin.com',
+            name='Administrador',
+            phone='(00) 00000-0000',
+            password_hash=generate_password_hash('admin123'),
+            role_id=admin_role.id if admin_role else None
+        )
+        db.session.add(admin_user)
+        db.session.commit()
+        print("Usuário admin criado: admin@admin.com / admin123")
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

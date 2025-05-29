@@ -1,0 +1,60 @@
+
+{% extends "base.html" %}
+
+{% block title %}Gerenciar Perfis - Beer Price Manager{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12 d-flex justify-content-between align-items-center">
+        <h2>Gerenciar Perfis</h2>
+        <a href="{{ url_for('admin_add_role') }}" class="btn btn-success">Criar Novo Perfil</a>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                {% if roles %}
+                <div class="table-responsive">
+                    <table class="table table-dark table-striped">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Descrição</th>
+                                <th>Usuários</th>
+                                <th>Permissões</th>
+                                <th>Criado em</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for role in roles %}
+                            <tr>
+                                <td><strong>{{ role.name }}</strong></td>
+                                <td>{{ role.description }}</td>
+                                <td>{{ role.users|length }}</td>
+                                <td>{{ role.role_permissions|length }}</td>
+                                <td>{{ role.created_at.strftime('%d/%m/%Y') }}</td>
+                                <td>
+                                    <a href="{{ url_for('admin_edit_role', role_id=role.id) }}" class="btn btn-sm btn-warning">Editar</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted">Nenhum perfil encontrado.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-3">
+    <div class="col-12">
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">Voltar ao Painel</a>
+    </div>
+</div>
+{% endblock %}
