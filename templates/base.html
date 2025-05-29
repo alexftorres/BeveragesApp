@@ -130,6 +130,41 @@
                         <a class="nav-link" href="{{ url_for('index') }}">Início</a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('add_price') }}">Adicionar Preço</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('rewards') }}">Recompensas</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('locations') }}">Locais</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('beers') }}">Cervejas</a>
+                    </li>
+                    {% set current_user = get_current_user() %}
+                    {% if current_user and (current_user.role == 'admin' or current_user.role == 'collaborator') %}
+                    <li class="nav-item">
+                        <a class="nav-link text-warning" href="{{ url_for('admin_panel') }}">👑 Admin</a>
+                    </li>
+                    {% endif %}
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('profile') }}">Perfil</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('logout') }}">Sair</a>
+                    </li>
+                </ul>
+            </div>
+            {% endif %}on>
+
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('index') }}">Início</a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('locations') }}">Locais</a>
                     </li>
                     <li class="nav-item">
