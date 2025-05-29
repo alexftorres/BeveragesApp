@@ -588,6 +588,64 @@ def admin_edit_user(user_id):
     roles = Role.query.all()
     return render_template('admin/edit_user.html', user=user, roles=roles)
 
+@app.route('/admin/rewards')
+@require_admin
+def admin_rewards():
+    rewards = Reward.query.all()
+    return render_template('admin/rewards.html', rewards=rewards)
+
+@app.route('/admin/rewards/add', methods=['GET', 'POST'])
+@require_admin
+def admin_add_reward():
+    if request.method == 'POST':
+        name = request.form['name']
+        description = request.form['description']
+        points_required = int(request.form['points_required'])
+        is_active = bool(request.form.get('is_active'))
+
+        reward = Reward(
+            name=name,
+            description=description,
+            points_required=points_required,
+            is_active=is_active
+        )
+
+        db.session.add(reward)
+        db.session.commit()
+
+        flash('Recompensa criada com sucesso!', 'success')
+        return redirect(url_for('admin_rewards'))
+
+    return render_template('admin/add_reward.html')
+
+@app.route('/admin/rewards/edit/<int:reward_id>', methods=['GET', 'POST'])
+@require_admin
+def admin_edit_reward(reward_id):
+    reward = Reward.query.get_or_404(reward_id)
+
+    if request.method == 'POST':
+        reward.name = request.form['name']
+        reward.description = request.form['description']
+        reward.points_required = int(request.form['points_required'])
+        reward.is_active = bool(request.form.get('is_active'))
+
+        db.session.commit()
+        flash('Recompensa atualizada com sucesso!', 'success')
+        return redirect(url_for('admin_rewards'))
+
+    return render_template('admin/edit_reward.html', reward=reward)
+
+@app.route('/admin/rewards/delete/<int:reward_id>')
+@require_admin
+def admin_delete_reward(reward_id):
+    reward = Reward.query.get_or_404(reward_id)
+    
+    db.session.delete(reward)
+    db.session.commit()
+    
+    flash('Recompensa removida com sucesso!', 'success')
+    return redirect(url_for('admin_rewards'))
+
 # Inicializar banco de dados
 with app.app_context():
     db.create_all()

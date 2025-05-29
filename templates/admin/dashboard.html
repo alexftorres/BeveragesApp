@@ -50,7 +50,7 @@
 </div>
 
 <div class="row mt-4">
-    <div class="col-md-6">
+    <div class="col-md-4">
         <div class="card">
             <div class="card-header">
                 <h5>Gerenciar Perfis</h5>
@@ -62,7 +62,7 @@
         </div>
     </div>
     
-    <div class="col-md-6">
+    <div class="col-md-4">
         <div class="card">
             <div class="card-header">
                 <h5>Gerenciar Usuários</h5>
@@ -73,5 +73,17 @@
             </div>
         </div>
     </div>
-</div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5>Gerenciar Recompensas</h5>
+            </div>
+            <div class="card-body">
+                <p>Crie e gerencie recompensas para o sistema de pontos.</p>
+                <a href="{{ url_for('admin_rewards') }}" class="btn btn-primary">Gerenciar Recompensas</a>
+            </div>
+        </div>
+    </div>
+</div></div>
 {% endblock %}
