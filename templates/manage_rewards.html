@@ -1,0 +1,69 @@
+
+{% extends "base.html" %}
+
+{% block title %}Gerenciar Recompensas - Beer Price Manager{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2>🎁 Gerenciar Recompensas</h2>
+            <div>
+                <a href="{{ url_for('add_reward') }}" class="btn btn-success">Nova Recompensa</a>
+                <a href="{{ url_for('admin_panel') }}" class="btn btn-secondary">Voltar ao Painel</a>
+            </div>
+        </div>
+        <hr>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Descrição</th>
+                        <th>Pontos Necessários</th>
+                        <th>Status</th>
+                        <th>Criado por</th>
+                        <th>Data</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for reward in rewards %}
+                    <tr>
+                        <td>{{ reward.name }}</td>
+                        <td>{{ reward.description }}</td>
+                        <td><span class="badge bg-primary">{{ reward.points_required }}</span></td>
+                        <td>
+                            {% if reward.is_active %}
+                                <span class="badge bg-success">Ativa</span>
+                            {% else %}
+                                <span class="badge bg-danger">Inativa</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if reward.creator %}
+                                {{ reward.creator.name }}
+                            {% else %}
+                                Sistema
+                            {% endif %}
+                        </td>
+                        <td>{{ reward.created_at.strftime('%d/%m/%Y') if reward.created_at else '-' }}</td>
+                        <td>
+                            <a href="{{ url_for('edit_reward', reward_id=reward.id) }}" class="btn btn-sm btn-warning">Editar</a>
+                            <a href="{{ url_for('delete_reward', reward_id=reward.id) }}" 
+                               class="btn btn-sm btn-danger"
+                               onclick="return confirm('Tem certeza que deseja remover esta recompensa?')">Remover</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
