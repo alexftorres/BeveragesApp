@@ -17,7 +17,7 @@
                         <select class="form-select" id="beer_id" name="beer_id" required>
                             <option value="">Selecione a cerveja</option>
                             {% for beer in beers %}
-                            <option value="{{ beer.id }}">{{ beer.brand }} - {{ beer.type.replace('_', ' ').title() }} ({{ beer.size }})</option>
+                            <option value="{{ beer.id }}">{{ beer.brand.name }} {{ beer.name }} - {{ beer.type.replace('_', ' ').title() }} ({{ beer.size }})</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -34,7 +34,10 @@
                     
                     <div class="mb-3">
                         <label for="price" class="form-label">Preço (R$)</label>
-                        <input type="number" class="form-control" id="price" name="price" step="0.01" required>
+                        <div class="input-group">
+                            <span class="input-group-text">R$</span>
+                            <input type="number" class="form-control" id="price" name="price" step="0.01" min="0" required placeholder="0,00">
+                        </div>
                         <div class="form-text">Digite o preço encontrado no estabelecimento</div>
                     </div>
                     
@@ -63,4 +66,41 @@
         {% endif %}
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const priceInput = document.getElementById('price');
+    
+    // Formatar como moeda enquanto digita
+    priceInput.addEventListener('input', function(e) {
+        let value = e.target.value;
+        
+        // Remove caracteres não numéricos exceto ponto e vírgula
+        value = value.replace(/[^\d.,]/g, '');
+        
+        // Substitui vírgula por ponto para compatibilidade
+        value = value.replace(',', '.');
+        
+        // Limita a 2 casas decimais
+        if (value.includes('.')) {
+            const parts = value.split('.');
+            if (parts[1] && parts[1].length > 2) {
+                value = parts[0] + '.' + parts[1].substring(0, 2);
+            }
+        }
+        
+        e.target.value = value;
+    });
+    
+    // Validar valor mínimo
+    priceInput.addEventListener('blur', function(e) {
+        const value = parseFloat(e.target.value);
+        if (value < 0) {
+            e.target.value = '0.00';
+        } else if (value) {
+            e.target.value = value.toFixed(2);
+        }
+    });
+});
+</script>
 {% endblock %}
