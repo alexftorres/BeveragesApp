@@ -246,14 +246,9 @@ def add_price():
         )
 
         db.session.add(price)
-
-        # Adicionar pontos ao usuário
-        user = User.query.get(session['user_id'])
-        user.points += 10
-
         db.session.commit()
 
-        flash('Preço adicionado com sucesso! Você ganhou 10 pontos!', 'success')
+        flash('Preço adicionado com sucesso! Você ganhará 10 pontos quando outro usuário confirmar o preço.', 'success')
         return redirect(url_for('index'))
 
     beers = Beer.query.all()
@@ -278,16 +273,16 @@ def confirm_price(price_id):
     price.confirmed_by = session['user_id']
     price.is_confirmed = True
 
-    # Adicionar pontos aos usuários
+    # Adicionar pontos aos usuários apenas na confirmação
     reporter = User.query.get(price.reported_by)
     confirmer = User.query.get(session['user_id'])
 
-    reporter.points += 5
-    confirmer.points += 5
+    reporter.points += 10  # Pontos por cadastrar o preço
+    confirmer.points += 5  # Pontos por confirmar
 
     db.session.commit()
 
-    flash('Preço confirmado! Você e o usuário que reportou ganharam 5 pontos cada!', 'success')
+    flash('Preço confirmado! O usuário que reportou ganhou 10 pontos e você ganhou 5 pontos!', 'success')
     return redirect(url_for('index'))
 
 @app.route('/rewards')
@@ -312,6 +307,11 @@ def edit_price(price_id):
         flash('Você só pode editar preços que você mesmo cadastrou!', 'error')
         return redirect(url_for('index'))
 
+    # Verificar se o preço já foi confirmado
+    if price.is_confirmed:
+        flash('Não é possível editar preços que já foram confirmados!', 'error')
+        return redirect(url_for('index'))
+
     if request.method == 'POST':
         price.price = float(request.form['price'])
         db.session.commit()
@@ -334,15 +334,10 @@ def delete_price(price_id):
         flash('Você só pode apagar preços que você mesmo cadastrou!', 'error')
         return redirect(url_for('index'))
 
-    # Remover pontos do usuário se o preço foi confirmado
+    # Verificar se o preço já foi confirmado
     if price.is_confirmed:
-        user = User.query.get(session['user_id'])
-        user.points -= 10  # Remove os pontos ganhos por cadastrar
-        
-        # Remove pontos do confirmador também
-        if price.confirmed_by:
-            confirmer = User.query.get(price.confirmed_by)
-            confirmer.points -= 5
+        flash('Não é possível apagar preços que já foram confirmados!', 'error')
+        return redirect(url_for('index'))
 
     db.session.delete(price)
     db.session.commit()
