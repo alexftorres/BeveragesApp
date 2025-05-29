@@ -235,6 +235,7 @@
                 {% if current_user.is_authenticated %}
                     <li><a href="{{ url_for('dashboard') }}"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
                     <li><a href="{{ url_for('locais') }}"><i class="fas fa-map-marker-alt"></i> Locais</a></li>
+                    <li><a href="{{ url_for('cervejas') }}"><i class="fas fa-beer"></i> Cervejas</a></li>
                     <li><a href="{{ url_for('reportar_preco') }}"><i class="fas fa-plus"></i> Reportar Preço</a></li>
                     <li><a href="{{ url_for('pontos') }}"><i class="fas fa-gift"></i> Brindes</a></li>
                 {% endif %}

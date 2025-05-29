@@ -50,6 +50,8 @@ class Cerveja(db.Model):
     marca = db.Column(db.String(50), nullable=False)
     tipo = db.Column(db.String(50))  # lager, pilsen, ipa, etc
     volume = db.Column(db.String(20))  # 350ml, 600ml, etc
+    descricao = db.Column(db.Text)
+    data_cadastro = db.Column(db.DateTime, default=datetime.utcnow)
     
     precos = db.relationship('PrecoReportado', backref='cerveja', lazy=True)
 
@@ -106,6 +108,14 @@ class LocalForm(FlaskForm):
     ], validators=[DataRequired()])
     endereco = StringField('Endereço', validators=[DataRequired(), Length(min=5, max=200)])
     submit = SubmitField('Cadastrar Local')
+
+class CervejaForm(FlaskForm):
+    nome = StringField('Nome da Cerveja', validators=[DataRequired(), Length(min=2, max=100)])
+    marca = StringField('Marca', validators=[DataRequired(), Length(min=2, max=50)])
+    tipo = StringField('Tipo (Lager, Pilsen, IPA, etc)', validators=[DataRequired(), Length(min=2, max=50)])
+    volume = StringField('Volume (350ml, 600ml, etc)', validators=[DataRequired(), Length(min=2, max=20)])
+    descricao = TextAreaField('Descrição')
+    submit = SubmitField('Cadastrar Cerveja')
 
 class PrecoForm(FlaskForm):
     local_id = SelectField('Local', coerce=int, validators=[DataRequired()])
@@ -250,6 +260,31 @@ def confirmar_preco(preco_id):
     db.session.commit()
     flash('Preço confirmado! Você e o usuário que reportou ganharam 5 pontos!', 'success')
     return redirect(url_for('dashboard'))
+
+@app.route('/cervejas')
+@login_required
+def cervejas():
+    todas_cervejas = Cerveja.query.order_by(Cerveja.marca, Cerveja.nome).all()
+    return render_template('cervejas.html', cervejas=todas_cervejas)
+
+@app.route('/cadastrar_cerveja', methods=['GET', 'POST'])
+@login_required
+def cadastrar_cerveja():
+    form = CervejaForm()
+    if form.validate_on_submit():
+        cerveja = Cerveja(
+            nome=form.nome.data,
+            marca=form.marca.data,
+            tipo=form.tipo.data,
+            volume=form.volume.data,
+            descricao=form.descricao.data
+        )
+        db.session.add(cerveja)
+        db.session.commit()
+        flash('Cerveja cadastrada com sucesso!', 'success')
+        return redirect(url_for('cervejas'))
+    
+    return render_template('cadastrar_cerveja.html', form=form)
 
 @app.route('/pontos')
 @login_required
