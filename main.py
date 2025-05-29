@@ -517,6 +517,20 @@ def delete_reward(reward_id):
 with app.app_context():
     db.create_all()
 
+    # Criar primeiro usuário admin se não existir nenhum usuário
+    if not User.query.first():
+        admin_user = User(
+            email='admin@beerapp.com',
+            name='Administrador',
+            phone='(11) 99999-9999',
+            has_whatsapp=True,
+            password_hash=generate_password_hash('admin123'),
+            role='admin',
+            points=0
+        )
+        db.session.add(admin_user)
+        db.session.commit()
+
     # Adicionar marcas padrão se não existirem
     if not Brand.query.first():
         brands = [
@@ -535,20 +549,6 @@ with app.app_context():
         for brand in brands:
             db.session.add(brand)
 
-        db.session.commit()
-
-    # Criar primeiro usuário admin se não existir nenhum usuário
-    if not User.query.first():
-        admin_user = User(
-            email='admin@beerapp.com',
-            name='Administrador',
-            phone='(11) 99999-9999',
-            has_whatsapp=True,
-            password_hash=generate_password_hash('admin123'),
-            role='admin',
-            points=0
-        )
-        db.session.add(admin_user)
         db.session.commit()
 
     # Adicionar recompensas padrão se não existirem
