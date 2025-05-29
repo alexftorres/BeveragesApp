@@ -15,7 +15,7 @@
     <div class="col-md-6 col-lg-4 mb-3">
         <div class="card">
             <div class="card-body">
-                <h5 class="card-title">{{ beer.brand }}</h5>
+                <h5 class="card-title">{{ beer.brand.name }} {{ beer.name }}</h5>
                 <p class="card-text">
                     <span class="badge bg-primary">{{ beer.type.replace('_', ' ').title() }}</span>
                     <span class="badge bg-secondary">{{ beer.size }}</span><br>

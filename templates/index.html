@@ -27,7 +27,7 @@
                             {% for price in recent_prices %}
                             <tr>
                                 <td>
-                                    <strong>{{ price.beer.brand }}</strong><br>
+                                    <strong>{{ price.beer.brand.name }} {{ price.beer.name }}</strong><br>
                                     <small class="text-muted">{{ price.beer.type }} - {{ price.beer.size }}</small>
                                 </td>
                                 <td>{{ price.location.name }}</td>

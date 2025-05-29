@@ -15,11 +15,29 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="brand" class="form-label">Marca</label>
-                                <input type="text" class="form-control" id="brand" name="brand" required>
-                                <div class="form-text">Ex: Skol, Brahma, Heineken</div>
+                                <label for="brand_id" class="form-label">Marca</label>
+                                <select class="form-select" id="brand_id" name="brand_id" required>
+                                    <option value="">Selecione a marca</option>
+                                    {% for brand in brands %}
+                                    <option value="{{ brand.id }}">{{ brand.name }}</option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">
+                                    Não encontrou a marca? 
+                                    <a href="{{ url_for('add_brand') }}" target="_blank">Cadastre uma nova marca</a>
+                                </div>
                             </div>
                         </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="name" class="form-label">Nome da Cerveja</label>
+                                <input type="text" class="form-control" id="name" name="name" required>
+                                <div class="form-text">Ex: Original, Pilsen, IPA, Weiss</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="type" class="form-label">Tipo</label>
@@ -38,9 +56,6 @@
                                 </select>
                             </div>
                         </div>
-                    </div>
-                    
-                    <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="size" class="form-label">Tamanho</label>
@@ -60,6 +75,8 @@
                             </div>
                         </div>
                     </div>
+                    
+                    
                     
                     <div class="mb-3">
                         <label for="description" class="form-label">Descrição</label>

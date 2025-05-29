@@ -1,0 +1,28 @@
+
+{% extends "base.html" %}
+
+{% block title %}Adicionar Marca - Beer Price Manager{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Cadastrar Nova Marca</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Nome da Marca</label>
+                        <input type="text" class="form-control" id="name" name="name" required>
+                        <div class="form-text">Ex: Skol, Brahma, Heineken, Corona</div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">Cadastrar Marca</button>
+                    <a href="{{ url_for('brands') }}" class="btn btn-secondary">Cancelar</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

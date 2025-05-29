@@ -32,14 +32,23 @@ class Location(db.Model):
     created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+class Brand(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False)
+    created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 class Beer(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    brand = db.Column(db.String(100), nullable=False)
+    name = db.Column(db.String(100), nullable=False)  # Nome específico da cerveja
+    brand_id = db.Column(db.Integer, db.ForeignKey('brand.id'), nullable=False)
     type = db.Column(db.String(50), nullable=False)  # lager, ipa, pilsen, etc
     description = db.Column(db.Text, nullable=False)
     size = db.Column(db.String(20), nullable=False)  # 350ml, 500ml, 600ml, etc
     created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    brand = db.relationship('Brand', backref='beers')
 
 class Price(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -70,7 +79,7 @@ def index():
         return redirect(url_for('login'))
 
     # Buscar preços recentes
-    recent_prices = db.session.query(Price).join(Beer).join(Location).order_by(Price.created_at.desc()).limit(10).all()
+    recent_prices = db.session.query(Price).join(Beer).join(Brand).join(Location).order_by(Price.created_at.desc()).limit(10).all()
 
     # Buscar usuário atual
     user = User.query.get(session['user_id'])
@@ -156,12 +165,45 @@ def add_location():
 
     return render_template('add_location.html')
 
+@app.route('/brands')
+def brands():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    brands = Brand.query.all()
+    return render_template('brands.html', brands=brands)
+
+@app.route('/add_brand', methods=['GET', 'POST'])
+def add_brand():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    if request.method == 'POST':
+        name = request.form['name']
+        
+        if Brand.query.filter_by(name=name).first():
+            flash('Esta marca já está cadastrada!', 'error')
+            return redirect(url_for('add_brand'))
+
+        brand = Brand(
+            name=name,
+            created_by=session['user_id']
+        )
+
+        db.session.add(brand)
+        db.session.commit()
+
+        flash('Marca adicionada com sucesso!', 'success')
+        return redirect(url_for('brands'))
+
+    return render_template('add_brand.html')
+
 @app.route('/beers')
 def beers():
     if 'user_id' not in session:
         return redirect(url_for('login'))
 
-    beers = Beer.query.all()
+    beers = Beer.query.join(Brand).all()
     return render_template('beers.html', beers=beers)
 
 @app.route('/add_beer', methods=['GET', 'POST'])
@@ -171,7 +213,8 @@ def add_beer():
 
     if request.method == 'POST':
         beer = Beer(
-            brand=request.form['brand'],
+            name=request.form['name'],
+            brand_id=request.form['brand_id'],
             type=request.form['type'],
             description=request.form['description'],
             size=request.form['size'],
@@ -184,7 +227,8 @@ def add_beer():
         flash('Cerveja adicionada com sucesso!', 'success')
         return redirect(url_for('beers'))
 
-    return render_template('add_beer.html')
+    brands = Brand.query.all()
+    return render_template('add_beer.html', brands=brands)
 
 @app.route('/add_price', methods=['GET', 'POST'])
 def add_price():
@@ -265,6 +309,26 @@ def profile():
 # Inicializar banco de dados
 with app.app_context():
     db.create_all()
+
+    # Adicionar marcas padrão se não existirem
+    if not Brand.query.first():
+        brands = [
+            Brand(name='Skol', created_by=1),
+            Brand(name='Brahma', created_by=1),
+            Brand(name='Antarctica', created_by=1),
+            Brand(name='Heineken', created_by=1),
+            Brand(name='Stella Artois', created_by=1),
+            Brand(name='Corona', created_by=1),
+            Brand(name='Budweiser', created_by=1),
+            Brand(name='Eisenbahn', created_by=1),
+            Brand(name='Colorado', created_by=1),
+            Brand(name='Original', created_by=1),
+        ]
+
+        for brand in brands:
+            db.session.add(brand)
+
+        db.session.commit()
 
     # Adicionar recompensas padrão se não existirem
     if not Reward.query.first():
