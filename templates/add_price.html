@@ -71,34 +71,54 @@
 document.addEventListener('DOMContentLoaded', function() {
     const priceInput = document.getElementById('price');
     
-    // Formatar como moeda enquanto digita
+    // Formatar entrada de preço
     priceInput.addEventListener('input', function(e) {
         let value = e.target.value;
         
-        // Remove caracteres não numéricos exceto ponto e vírgula
+        // Remove tudo exceto números, vírgula e ponto
         value = value.replace(/[^\d.,]/g, '');
         
-        // Substitui vírgula por ponto para compatibilidade
-        value = value.replace(',', '.');
+        // Substitui vírgula por ponto para o padrão americano
+        value = value.replace(/,/g, '.');
+        
+        // Remove pontos extras (mantém apenas o primeiro)
+        const parts = value.split('.');
+        if (parts.length > 2) {
+            value = parts[0] + '.' + parts.slice(1).join('');
+        }
         
         // Limita a 2 casas decimais
         if (value.includes('.')) {
-            const parts = value.split('.');
-            if (parts[1] && parts[1].length > 2) {
-                value = parts[0] + '.' + parts[1].substring(0, 2);
+            const decimalParts = value.split('.');
+            if (decimalParts[1] && decimalParts[1].length > 2) {
+                value = decimalParts[0] + '.' + decimalParts[1].substring(0, 2);
             }
         }
         
         e.target.value = value;
     });
     
-    // Validar valor mínimo
+    // Validar e formatar quando sair do campo
     priceInput.addEventListener('blur', function(e) {
-        const value = parseFloat(e.target.value);
-        if (value < 0) {
-            e.target.value = '0.00';
-        } else if (value) {
-            e.target.value = value.toFixed(2);
+        let value = parseFloat(e.target.value);
+        
+        if (isNaN(value) || value < 0) {
+            e.target.value = '';
+            return;
+        }
+        
+        // Formatar com 2 casas decimais
+        e.target.value = value.toFixed(2);
+    });
+    
+    // Permitir apenas números, vírgula, ponto e teclas de controle
+    priceInput.addEventListener('keypress', function(e) {
+        const char = String.fromCharCode(e.which);
+        const allowedChars = /[\d.,]/;
+        const controlKeys = [8, 9, 13, 27, 46]; // Backspace, Tab, Enter, Esc, Delete
+        
+        if (!allowedChars.test(char) && controlKeys.indexOf(e.keyCode) === -1) {
+            e.preventDefault();
         }
     });
 });
