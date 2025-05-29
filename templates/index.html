@@ -43,6 +43,13 @@
                                     {% if not price.is_confirmed and price.reported_by != session.user_id %}
                                         <a href="{{ url_for('confirm_price', price_id=price.id) }}" class="btn btn-sm btn-success">Confirmar</a>
                                     {% endif %}
+                                    
+                                    {% if price.reported_by == session.user_id %}
+                                        <a href="{{ url_for('edit_price', price_id=price.id) }}" class="btn btn-sm btn-warning">Editar</a>
+                                        <a href="{{ url_for('delete_price', price_id=price.id) }}" 
+                                           class="btn btn-sm btn-danger" 
+                                           onclick="return confirm('Tem certeza que deseja apagar este preço?')">Apagar</a>
+                                    {% endif %}
                                 </td>
                             </tr>
                             {% endfor %}

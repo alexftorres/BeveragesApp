@@ -300,6 +300,56 @@ def rewards():
 
     return render_template('rewards.html', user=user, rewards=rewards)
 
+@app.route('/edit_price/<int:price_id>', methods=['GET', 'POST'])
+def edit_price(price_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    price = Price.query.get_or_404(price_id)
+    
+    # Verificar se o usuário é o dono do preço
+    if price.reported_by != session['user_id']:
+        flash('Você só pode editar preços que você mesmo cadastrou!', 'error')
+        return redirect(url_for('index'))
+
+    if request.method == 'POST':
+        price.price = float(request.form['price'])
+        db.session.commit()
+        flash('Preço atualizado com sucesso!', 'success')
+        return redirect(url_for('index'))
+
+    beers = Beer.query.all()
+    locations = Location.query.all()
+    return render_template('edit_price.html', price=price, beers=beers, locations=locations)
+
+@app.route('/delete_price/<int:price_id>')
+def delete_price(price_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    price = Price.query.get_or_404(price_id)
+    
+    # Verificar se o usuário é o dono do preço
+    if price.reported_by != session['user_id']:
+        flash('Você só pode apagar preços que você mesmo cadastrou!', 'error')
+        return redirect(url_for('index'))
+
+    # Remover pontos do usuário se o preço foi confirmado
+    if price.is_confirmed:
+        user = User.query.get(session['user_id'])
+        user.points -= 10  # Remove os pontos ganhos por cadastrar
+        
+        # Remove pontos do confirmador também
+        if price.confirmed_by:
+            confirmer = User.query.get(price.confirmed_by)
+            confirmer.points -= 5
+
+    db.session.delete(price)
+    db.session.commit()
+    
+    flash('Preço removido com sucesso!', 'success')
+    return redirect(url_for('index'))
+
 @app.route('/profile')
 def profile():
     if 'user_id' not in session:

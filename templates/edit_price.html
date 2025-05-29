@@ -1,0 +1,117 @@
+
+{% extends "base.html" %}
+
+{% block title %}Editar Preço - Beer Price Manager{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Editar Preço</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="beer_info" class="form-label">Cerveja</label>
+                        <input type="text" class="form-control" id="beer_info" 
+                               value="{{ price.beer.brand.name }} {{ price.beer.name }} - {{ price.beer.type.replace('_', ' ').title() }} ({{ price.beer.size }})" 
+                               readonly>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="location_info" class="form-label">Local</label>
+                        <input type="text" class="form-control" id="location_info" 
+                               value="{{ price.location.name }} - {{ price.location.address }}" 
+                               readonly>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="price" class="form-label">Preço (R$)</label>
+                        <div class="input-group">
+                            <span class="input-group-text">R$</span>
+                            <input type="text" class="form-control" id="price" name="price" 
+                                   value="{{ '%.2f'|format(price.price) }}" required placeholder="0,00" inputmode="decimal">
+                        </div>
+                        <div class="form-text">Digite o preço encontrado no estabelecimento (ex: 5,99 ou 5.99)</div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Informação:</strong> Você está editando um preço que você mesmo cadastrou.
+                        {% if price.is_confirmed %}
+                        Este preço já foi confirmado por outro usuário.
+                        {% endif %}
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancelar</a>
+                        <button type="submit" class="btn btn-primary">Atualizar Preço</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const priceInput = document.getElementById('price');
+    
+    // Permitir apenas números, vírgula e ponto
+    priceInput.addEventListener('keypress', function(e) {
+        const char = e.key;
+        const value = e.target.value;
+        
+        // Permitir teclas de controle (backspace, delete, tab, enter, setas)
+        if (e.ctrlKey || e.metaKey || ['Backspace', 'Delete', 'Tab', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(char)) {
+            return;
+        }
+        
+        // Permitir números
+        if (/[0-9]/.test(char)) {
+            return;
+        }
+        
+        // Permitir vírgula ou ponto como separador decimal (apenas um)
+        if ((char === ',' || char === '.') && !value.includes('.') && !value.includes(',')) {
+            return;
+        }
+        
+        // Bloquear outros caracteres
+        e.preventDefault();
+    });
+    
+    // Validar e formatar ao sair do campo
+    priceInput.addEventListener('blur', function(e) {
+        let value = e.target.value.trim();
+        
+        if (value === '') {
+            return;
+        }
+        
+        // Substituir vírgula por ponto
+        value = value.replace(',', '.');
+        
+        // Converter para número
+        const numValue = parseFloat(value);
+        
+        // Validar se é um número válido e positivo
+        if (isNaN(numValue) || numValue < 0) {
+            alert('Por favor, digite um preço válido (ex: 5,99)');
+            e.target.focus();
+            return;
+        }
+        
+        // Formatar com 2 casas decimais
+        e.target.value = numValue.toFixed(2);
+    });
+    
+    // Permitir edição livre do campo
+    priceInput.addEventListener('focus', function(e) {
+        // Ao focar no campo, permite edição livre
+        e.target.select();
+    });
+});
+</script>
+{% endblock %}
